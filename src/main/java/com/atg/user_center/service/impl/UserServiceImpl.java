@@ -29,9 +29,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     private  static final String Salt = "atg";
     @Override
-    public Long userRegister(String userAccount, String userPassword, String checkPassword) {
+    public Long userRegister(String userAccount, String userPassword, String checkPassword, String planetCode) {
         // 1.非空
-        if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword)){
+        if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword,planetCode)){
             return (long) -1;
         }
 
@@ -53,6 +53,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (!userPassword.equals(checkPassword)){
             return (long) -1;
         }
+        // 星球编号的长度
+        if (planetCode.length() > 6){
+            return (long) -1;
+        }
+
         // 6.账户是否可用
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("userAccount", userAccount);
@@ -60,6 +65,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (user != null) {
             return (long) -1;
         }
+        // 星球编号是否可用
+        User code = userMapper.selectOne(new QueryWrapper<User>().eq("planetCode", planetCode));
+        if (code != null)
+        {
+            return (long) -1;
+        }
+
         // 7.存入数据库
         // 7.1 密码加密
         String encryptPassword = DigestUtils.md5DigestAsHex((Salt + userPassword).getBytes());
@@ -67,6 +79,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         User user1 = new User();
         user1.setUserAccount(userAccount);
         user1.setPassword(encryptPassword);
+        user1.setPlanetCode(planetCode);
         boolean saveResult = this.save(user1);
         if (!saveResult)
         {
@@ -74,6 +87,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         return user1.getId();
     }
+
+
 
     /**
      * 用户登录
@@ -114,23 +129,20 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             log.info("user login failed, userAccount cannot match userPassword");
         }
         // 6.脱敏处理
-        User safetyUser = new User();
-        safetyUser.setId(user.getId());
-        safetyUser.setUsername(user.getUsername());
-        safetyUser.setUserAccount(user.getUserAccount());
-        safetyUser.setGender(user.getGender());
-        safetyUser.setPhone(user.getPhone());
-        safetyUser.setCreateTime(new Date());
-        safetyUser.setUpdateTime(new Date());
-        safetyUser.setUserRole(user.getUserRole());
-
-
+        User safetyUser = getSafetyUser(user);
 
         // 记录用户状态
         request.getSession().setAttribute("user", safetyUser);
         return safetyUser;
     }
 
+    @Override
+    public void userLogout(HttpServletRequest request) {
+        request.getSession().removeAttribute("user");
+    }
+
+
+    @Override
     public User getSafetyUser(User originUser) {
         if (originUser == null) {
             return null;
@@ -143,8 +155,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         safetyUser.setGender(originUser.getGender());
         safetyUser.setPhone(originUser.getPhone());
         safetyUser.setEmail(originUser.getEmail());
-//        safetyUser.setPlanetCode(originUser.getPlanetCode());
-//        safetyUser.setUserRole(originUser.getUserRole());
+        safetyUser.setPlanetCode(originUser.getPlanetCode());
+        safetyUser.setUserRole(originUser.getUserRole());
         safetyUser.setUserStatus(originUser.getUserStatus());
         safetyUser.setCreateTime(originUser.getCreateTime());
         return safetyUser;

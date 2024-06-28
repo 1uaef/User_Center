@@ -32,11 +32,12 @@ public class UserController {
         String userAccount = RegisterBody.getUserAccount();
         String userPassword = RegisterBody.getPassword();
         String checkPassword = RegisterBody.getCheckPassword();
-        if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword)) {
+        String planetCode = RegisterBody.getPlanetCode();
+        if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword,planetCode)) {
             return null;
         }
 
-        return userService.userRegister(userAccount, userPassword, checkPassword);
+        return userService.userRegister(userAccount, userPassword, checkPassword,planetCode);
 
     }
 
@@ -55,6 +56,10 @@ public class UserController {
         User user = userService.userLogin(userAccount, userPassword, request);
 
         return user;
+    }
+    @PostMapping(value = "/logout")
+    public void userLogout(HttpServletRequest request) {
+        userService.userLogout(request);
     }
 
 
